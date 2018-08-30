@@ -106,10 +106,9 @@ void MyRequestManager::parseCurrentWeatherReply()
     QNetworkReply * reply = dynamic_cast<QNetworkReply*>(QObject::sender());
     if (reply != nullptr)
     {
-        // parse json
-        QJsonDocument doc;
+        // Parse JSON
         QJsonParseError parseError;
-        doc = QJsonDocument::fromJson(reply->readAll(), &parseError);
+        QJsonDocument doc = QJsonDocument::fromJson(reply->readAll(), &parseError);
 
         if (! doc.isNull())
         {
@@ -138,49 +137,88 @@ void MyRequestManager::parseCurrentWeatherReply()
                     mCurrentWeather.setCityName(cityName.toString());
                 }
 
+                // Date Time
+                if (obj.contains("dt"))
+                {
+                    QJsonValue dateTime = obj["dt"];
+                    mCurrentWeather.setDateTime(QDateTime::fromSecsSinceEpoch(dateTime.toInt()));
+                }
+
                 currentWeatherReady(&mCurrentWeather);
             }
+        }
+        else
+        {
+            qDebug()<<parseError.errorString();
         }
     }
 }
 
 void MyRequestManager::parseWeatherForecastReply()
 {
-    // TODO : secure parsing against bad JSON document
     QNetworkReply * reply = dynamic_cast<QNetworkReply*>(QObject::sender());
     if (reply != nullptr)
     {
-        // parse json
-        QJsonDocument doc;
+        // Parse JSON
         QJsonParseError parseError;
-        doc = QJsonDocument::fromJson(reply->readAll(), &parseError);
-        QJsonObject obj = doc.object();
+        QJsonDocument doc = QJsonDocument::fromJson(reply->readAll(), &parseError);
 
-        for(short day=0; day<MyForecastWeather::NB_DAYS_FORECAST; ++day)
+        if (! doc.isNull())
         {
-            for(short bloc=0; bloc<MyForecastWeather::NB_BLOCS_EACHDAY_FORECAST; ++bloc)
+            // Get data from the JSON document :
+            QJsonObject obj = doc.object();
+
+            if (! obj.isEmpty() && obj.contains("list") && obj["list"].isArray())
             {
-                MyWeatherData * data = mWeaterForecast.getWeatherData(day, bloc);
-                int index = day*MyForecastWeather::NB_BLOCS_EACHDAY_FORECAST + bloc;
+                for(short day=0; day<MyForecastWeather::NB_DAYS_FORECAST; ++day)
+                {
+                    for(short bloc=0; bloc<MyForecastWeather::NB_BLOCS_EACHDAY_FORECAST; ++bloc)
+                    {
+                        MyWeatherData * data = mWeaterForecast.getWeatherData(day, bloc);
+                        int index = day*MyForecastWeather::NB_BLOCS_EACHDAY_FORECAST + bloc;
 
-                QJsonObject blocData = obj["list"].toArray().at(index).toObject();
+                        if (index < obj["list"].toArray().size())
+                        {
+                            QJsonObject blocData = obj["list"].toArray().at(index).toObject();
 
-                // TEMPERATURE
-                QJsonValue temperature = blocData["main"].toObject()["temp"];
-                data->setTemperature(temperature.toDouble());
+                            // TEMPERATURE
+                            if (blocData.contains("main")
+                             && blocData["main"].toObject().contains("temp"))
+                            {
+                                    QJsonValue temperature = blocData["main"].toObject()["temp"];
+                                    data->setTemperature(temperature.toDouble());
+                            }
 
-                // DATE TIME
-                int year, month, day, hour, minute, second;
-                QString dt_text = blocData["dt_txt"].toString();
-                sscanf(dt_text.toStdString().c_str(), "%d-%d-%d %d:%d:%d", &year, &month, &day, &hour, &minute, &second);
-                data->setDateTime(QDateTime::fromTime_t(static_cast<unsigned int>(blocData["dt"].toInt())));
+                            // DATE TIME
+                            if (blocData.contains("dt"))
+                            {
+                                int year, month, day, hour, minute, second;
+                                QString dt_text = blocData["dt_txt"].toString();
+                                sscanf(dt_text.toStdString().c_str(), "%d-%d-%d %d:%d:%d", &year, &month, &day, &hour, &minute, &second);
 
-                // ICON
-                QString iconId = blocData["weather"].toArray().at(0).toObject()["icon"].toString();
-                data->setIconId(iconId);
+                                data->setDateTime(QDateTime::fromTime_t(static_cast<unsigned int>(blocData["dt"].toInt())));
+                            }
+
+                            // ICON
+                            if ( blocData.contains("weather")
+                              && blocData["weather"].isArray()
+                              && blocData["weather"].toArray().size() > 0 // TODO : why could it have more than 1 entry on this array ?
+                              && blocData["weather"].toArray().at(0).toObject().contains("icon"))
+                            {
+                                            QString iconId = blocData["weather"].toArray().at(0).toObject()["icon"].toString();
+                                            data->setIconId(iconId);
+                            }
+                        }
+                    }
+                }
+
+                weatherForecastReady(&mWeaterForecast);
             }
         }
-        weatherForecastReady(&mWeaterForecast);
+        else
+        {
+            qDebug()<<parseError.errorString();
+        }
     }
 }
 /*
