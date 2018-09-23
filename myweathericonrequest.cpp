@@ -11,7 +11,7 @@ MyWeatherIconRequest::MyWeatherIconRequest(QString iconId, QNetworkReply *reply)
 
 void MyWeatherIconRequest::replyFinished()
 {
-    // TODO : PArse reply, and extract pixmap.
+    // Parse reply, and extract pixmap.
 
     QNetworkReply * reply = dynamic_cast<QNetworkReply*>(QObject::sender());
     if (reply != nullptr)
@@ -25,7 +25,6 @@ void MyWeatherIconRequest::replyFinished()
         {
             MyWeatherIcon * weatherIcon = new MyWeatherIcon(mIconId, pixmap);
             emit iconReady(weatherIcon);
-
         }
     }
 }

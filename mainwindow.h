@@ -16,29 +16,20 @@ class MainWindow : public QMainWindow
     Q_OBJECT
 
 public:
-    explicit MainWindow(QWidget *parent = 0);
+    explicit MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
 
 private:
     Ui::MainWindow *ui;
 
-    std::vector<FormWeatherData*> mVecFormWeatherData;
-
-    //void downloadIcon(QString iconId);
-
-    //QQueue<QString> mQueueIconIdToDownload;
-
+    std::vector<FormWeatherData*> mVecFormWeatherData; // vector of widgets, each displaying one of the periods of weather.
+    std::map<QString, MyWeatherIcon*> mMapWeatherIcon; // Store icons downloaded from the server.
 
 private slots:
     void updateCurrentWeather(MyWeatherData*);
     void updateWeatherIcon(MyWeatherIcon*);
     void updateWeatherForecast(MyForecastWeather*);
     void refreshData();
-
-private:
-    //std::map<QString, QPixmap> mMapIcons;
-    //QVector<MyWeatherIcon*> mVecIcons;
-    std::map<QString, MyWeatherIcon*> mMapWeatherIcon;
 };
 
 #endif // MAINWINDOW_H

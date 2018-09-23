@@ -45,3 +45,13 @@ void MyWeatherData::setDateTime(QDateTime dateTime)
 {
     mDateTime = dateTime;
 }
+
+QString MyWeatherData::getDescription() const
+{
+    return description;
+}
+
+void MyWeatherData::setDescription(const QString &value)
+{
+    description = value;
+}

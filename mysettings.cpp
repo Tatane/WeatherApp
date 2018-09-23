@@ -19,11 +19,11 @@ MySettings *MySettings::getInstance()
 
 MySettings::Units MySettings::getUnitsFromString(QString s)
 {
-    if (s.compare("metric") == 0)
+    if (s.compare(VALUE_UNITS_METRIC) == 0)
     {
         return Units::Metric;
     }
-    else if (s.compare("imperial") == 0)
+    else if (s.compare(VALUE_UNITS_IMPERIAL) == 0)
     {
         return Units::Imperial;
     }
@@ -31,6 +31,32 @@ MySettings::Units MySettings::getUnitsFromString(QString s)
     {
         return Units::Standard;
     }
+}
+
+QLocale MySettings::getLocaleFromString(QString s)
+{
+    if (s.compare(VALUE_LANGUAGE_ENGLISH) == 0)
+    {
+        return QLocale(QLocale::English);
+    }
+    else if (s.compare(VALUE_LANGUAGE_FRENCH) == 0)
+    {
+        return QLocale::French;
+    }
+    else
+    {
+        return QLocale::system();
+    }
+}
+
+void MySettings::setLocale(const QLocale &locale)
+{
+    mLocale = locale;
+}
+
+QLocale MySettings::getLocale() const
+{
+    return mLocale;
 }
 
 QString MySettings::getApiKey() const
@@ -67,6 +93,11 @@ void MySettings::readSettingsFile(QString fullPathToSettingsFile)
     }
     mUnits = getUnitsFromString(settings.value(KEY_UNITS).toString());
 
+    if (! settings.contains(KEY_LANGUAGE))
+    {
+        settings.setValue(KEY_LANGUAGE, QVariant(VALUE_LANGUAGE_FRENCH));
+    }
+    mLocale = getLocaleFromString(settings.value(KEY_LANGUAGE).toString());
 
 }
 

@@ -12,28 +12,23 @@
 MainWindow::MainWindow(QWidget *parent)
   : QMainWindow(parent)
   , ui(new Ui::MainWindow)
-  //, mRequestManager(MyRequestManager::getInstance())
 {
     ui->setupUi(this);
 
     MySettings::getInstance();
 
     connect(MyRequestManager::getInstance(), SIGNAL(currentWeatherReady(MyWeatherData*)), this, SLOT(updateCurrentWeather(MyWeatherData*)));
-
+    connect(MyRequestManager::getInstance(), SIGNAL(weatherForecastReady(MyForecastWeather*)), this, SLOT(updateWeatherForecast(MyForecastWeather*)));
     connect(MyRequestManager::getInstance(), SIGNAL(iconReady(MyWeatherIcon*)), this, SLOT(updateWeatherIcon(MyWeatherIcon*)));
 
-    connect(MyRequestManager::getInstance(), SIGNAL(weatherForecastReady(MyForecastWeather*)), this, SLOT(updateWeatherForecast(MyForecastWeather*)));
-
-
     connect(ui->pushButton, SIGNAL(clicked(bool)), this, SLOT(refreshData()));
-
 
     // Create widgets FormWeatherData : one for the current weather, and NB_DAYS_FORECAST*NB_BLOCS_EACHDAY_FORECAST for the forecasts :
     for(int i=0; i<1 + MyForecastWeather::NB_DAYS_FORECAST*MyForecastWeather::NB_BLOCS_EACHDAY_FORECAST; ++i)
     {
         FormWeatherData * formWeatherData = new FormWeatherData;
         mVecFormWeatherData.push_back(formWeatherData);
-        ui->horizontalLayout->addWidget(formWeatherData);
+        ui->verticalLayoutScrollArea->addWidget(formWeatherData);
     }
 
     refreshData();
@@ -41,40 +36,56 @@ MainWindow::MainWindow(QWidget *parent)
 
 MainWindow::~MainWindow()
 {
+    for(FormWeatherData * formWeatherData : mVecFormWeatherData)
+    {
+        delete formWeatherData;
+        formWeatherData = nullptr;
+    }
+
+    for(std::pair<QString, MyWeatherIcon* > pair : mMapWeatherIcon)
+    {
+        MyWeatherIcon * weatherIcon = pair.second;
+        delete weatherIcon;
+        weatherIcon = nullptr;
+    }
+
     delete ui;
 }
-/*
-void MainWindow::downloadIcon(QString iconId)
-{    
-    MyRequestManager::getInstance()->getIcon(iconId);
-}
-*/
 
 void MainWindow::updateWeatherIcon(MyWeatherIcon * weatherIcon)
 {
-    mMapWeatherIcon[weatherIcon->id()] = weatherIcon;
-
-    for(FormWeatherData* formWeatherData : mVecFormWeatherData)
+    if (mMapWeatherIcon.find(weatherIcon->id()) != mMapWeatherIcon.end())
     {
-        if (formWeatherData->weatherData()->getIconId() == weatherIcon->id())
+        // If a WeatherIcon with the same id has already been stored in the map, we can delete this useless one :
+        delete weatherIcon;
+        weatherIcon = nullptr;
+    }
+    else
+    {
+        // Store the WeatherIcon in the map. MainWindow is responsible to delete them later.
+        mMapWeatherIcon[weatherIcon->id()] = weatherIcon;
+
+        for(FormWeatherData* formWeatherData : mVecFormWeatherData)
         {
-            formWeatherData->updateWeatherIcon(weatherIcon);
+            if (formWeatherData->weatherData()->getIconId() == weatherIcon->id())
+            {
+                formWeatherData->updateWeatherIcon(weatherIcon);
+            }
         }
     }
 }
 
 void MainWindow::updateCurrentWeather(MyWeatherData * weatherData)
 {
-    ui->labelTemperature->setText(QString::number(weatherData->getTemperature()));
-    ui->labelCityNam->setText(weatherData->getCityName());
+    ui->labelCityName->setText(weatherData->getCityName());
 
     FormWeatherData * formWeatherData = mVecFormWeatherData.at(0); // the first Form of the vector is the Current Weather.
     formWeatherData->setWeatherData(weatherData);
+    formWeatherData->refresh();
 
     if (mMapWeatherIcon.find(weatherData->getIconId()) != mMapWeatherIcon.end())
     {
         MyWeatherIcon * weatherIcon = mMapWeatherIcon.at(weatherData->getIconId());
-        QPixmap pixmap = weatherIcon->pixmap();
         mVecFormWeatherData[0]->updateWeatherIcon(weatherIcon);
     }
     else
@@ -102,10 +113,8 @@ void MainWindow::updateWeatherForecast(MyForecastWeather * myWeatherForecast)
             }
             else
             {
-                MyWeatherIconRequest * weatherIconRequest = MyRequestManager::getInstance()->getIcon(weatherData->getIconId()); // request the icon.
-                //connect(weatherIconRequest, SIGNAL(iconReady(MyWeatherIcon*)), formWeatherData, SLOT(updateWeatherIcon(MyWeatherIcon*)));
+                MyRequestManager::getInstance()->getIcon(weatherData->getIconId()); // request the icon.
             }
-
         }
     }
 }

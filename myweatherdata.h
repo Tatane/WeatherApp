@@ -17,12 +17,15 @@ public:
     void setCityName(QString cityName);
     QDateTime getDateTime() const;
     void setDateTime(QDateTime dateTime);
+    QString getDescription() const;
+    void setDescription(const QString &value);
 
 private:
     QDateTime mDateTime;
     double mTemperature;
     QString mIconId;
     QString mCityName;
+    QString description;
 };
 
 #endif // MYWEATHERDATA_H

@@ -33,21 +33,14 @@ void MyRequestManager::getCurrentWeather(int cityId)
     connect(reply, SIGNAL(finished()), this, SLOT(parseCurrentWeatherReply()));
 }
 
-MyWeatherIconRequest * MyRequestManager::getIcon(const QString &iconId)
+void MyRequestManager::getIcon(const QString &iconId)
 {
     QNetworkReply * reply = mNetworkAccesManager.get(QNetworkRequest(constructUrlRequestIcon(iconId)));
 
-    MyWeatherIconRequest * weatherIconRequest = new MyWeatherIconRequest(iconId, reply);
-    // TODO : Store this object in a container until it's finished.
+    MyWeatherIconRequest * weatherIconRequest = new MyWeatherIconRequest(iconId, reply); // Will be deleted in MyRequestManager::iconReceived, when reply has been processed.
 
-    connect(weatherIconRequest, SIGNAL(iconReady(MyWeatherIcon*)), this, SIGNAL(iconReady(MyWeatherIcon*)));
-    // can I connect this SIGNAL directly to a this->SIGNAL ?
+    connect(weatherIconRequest, SIGNAL(iconReady(MyWeatherIcon*)), this, SLOT(iconReceived(MyWeatherIcon*)));
 
-    // ? mapper la reply avec id
-    //mMapIconBeingDownloaded[reply] = iconId;
-    //connect(reply, SIGNAL(finished()), this, SLOT(parseIconReply()));
-
-    return weatherIconRequest;
 }
 
 MyRequestManager::MyRequestManager()
@@ -94,9 +87,6 @@ QString MyRequestManager::constructUrlParameterTemperatureUnit() const
     case MySettings::Units::Imperial:
         ret = "&units=imperial";
         break;
-    default:
-        ret = "";
-        break;
     }
     return ret;
 }
@@ -128,6 +118,9 @@ void MyRequestManager::parseCurrentWeatherReply()
                 {
                     QJsonValue icon = obj["weather"].toArray()[0].toObject()["icon"];
                     mCurrentWeather.setIconId(icon.toString());
+
+                    QJsonValue description = obj["weather"].toArray()[0].toObject()["description"];
+                    mCurrentWeather.setDescription(description.toString());
                 }
 
                 // City name
@@ -140,8 +133,8 @@ void MyRequestManager::parseCurrentWeatherReply()
                 // Date Time
                 if (obj.contains("dt"))
                 {
-                    QJsonValue dateTime = obj["dt"];
-                    mCurrentWeather.setDateTime(QDateTime::fromSecsSinceEpoch(dateTime.toInt()));
+                    QDateTime dt = QDateTime::fromTime_t(static_cast<unsigned int>(obj["dt"].toInt()));
+                    mCurrentWeather.setDateTime(dt);
                 }
 
                 currentWeatherReady(&mCurrentWeather);
@@ -185,28 +178,34 @@ void MyRequestManager::parseWeatherForecastReply()
                             if (blocData.contains("main")
                              && blocData["main"].toObject().contains("temp"))
                             {
-                                    QJsonValue temperature = blocData["main"].toObject()["temp"];
-                                    data->setTemperature(temperature.toDouble());
+                                QJsonValue temperature = blocData["main"].toObject()["temp"];
+                                data->setTemperature(temperature.toDouble());
                             }
 
                             // DATE TIME
                             if (blocData.contains("dt"))
                             {
-                                int year, month, day, hour, minute, second;
-                                QString dt_text = blocData["dt_txt"].toString();
-                                sscanf(dt_text.toStdString().c_str(), "%d-%d-%d %d:%d:%d", &year, &month, &day, &hour, &minute, &second);
-
-                                data->setDateTime(QDateTime::fromTime_t(static_cast<unsigned int>(blocData["dt"].toInt())));
+                                QDateTime dt = QDateTime::fromTime_t(static_cast<unsigned int>(blocData["dt"].toInt()));
+                                data->setDateTime(dt);
                             }
 
-                            // ICON
                             if ( blocData.contains("weather")
                               && blocData["weather"].isArray()
-                              && blocData["weather"].toArray().size() > 0 // TODO : why could it have more than 1 entry on this array ?
-                              && blocData["weather"].toArray().at(0).toObject().contains("icon"))
+                              && blocData["weather"].toArray().size() > 0) // TODO : why could it have more than 1 entry on this array ?
                             {
-                                            QString iconId = blocData["weather"].toArray().at(0).toObject()["icon"].toString();
-                                            data->setIconId(iconId);
+                                // ICON
+                                if (blocData["weather"].toArray().at(0).toObject().contains("icon"))
+                                {
+                                    QString iconId = blocData["weather"].toArray().at(0).toObject()["icon"].toString();
+                                    data->setIconId(iconId);
+                                }
+
+                                // DESCRIPTION
+                                if (blocData["weather"].toArray().at(0).toObject().contains("description"))
+                                {
+                                    QJsonValue description = blocData["weather"].toArray().at(0).toObject()["description"];
+                                    data->setDescription(description.toString());
+                                }
                             }
                         }
                     }
@@ -221,35 +220,14 @@ void MyRequestManager::parseWeatherForecastReply()
         }
     }
 }
-/*
-void MyRequestManager::iconReady(MyWeatherIcon * weatherIcon)
+
+void MyRequestManager::iconReceived(MyWeatherIcon *weatherIcon)
 {
+    MyWeatherIconRequest * weatherIconRequest = dynamic_cast<MyWeatherIconRequest*>(sender());
+    if (nullptr != weatherIconRequest)
+    {
+        weatherIconRequest->deleteLater();
+    }
+
     emit iconReady(weatherIcon);
 }
-*/
-/*
-void MyRequestManager::parseIconReply()
-{
-    QNetworkReply * reply = dynamic_cast<QNetworkReply*>(QObject::sender());
-    if (reply != nullptr)
-    {
-        QByteArray byteArray = reply->readAll();
-
-        QPixmap pixmap;
-        bool b = pixmap.loadFromData(byteArray, "PNG");
-
-        mCurrentWeather.setIcon(pixmap);
-
-        if (mMapIconBeingDownloaded.end() != mMapIconBeingDownloaded.find(reply) )
-        {
-            QString id = mMapIconBeingDownloaded.value(reply);
-            MyWeatherIcon * weatherIcon = new MyWeatherIcon(id, pixmap);
-            iconReady(weatherIcon);
-        }
-
-
-
-
-    }
-}
-*/

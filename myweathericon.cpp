@@ -12,7 +12,7 @@ QString MyWeatherIcon::id() const
     return mId;
 }
 
-QPixmap MyWeatherIcon::pixmap() const
+QPixmap & MyWeatherIcon::pixmap()
 {
     return mPixmap;
 }

@@ -11,7 +11,7 @@ public:
 
     QString id() const;
 
-    QPixmap pixmap() const;
+    QPixmap & pixmap();
 
 private:
     QString mId;

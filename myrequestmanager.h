@@ -18,7 +18,7 @@ public:
 
     void getForecastWeather(int cityId);
     void getCurrentWeather(int cityId);
-    MyWeatherIconRequest *getIcon(const QString & iconId);
+    void getIcon(const QString & iconId);
 
 private:
     static MyRequestManager * mInstance;
@@ -36,8 +36,6 @@ private:
     QString constructUrlParameterApiKey() const;
     QString constructUrlParameterTemperatureUnit() const;
 
-    //QMap<QNetworkReply*, QString> mMapIconBeingDownloaded;
-
     const QString SERVER = "http://api.openweathermap.org";
     const QString REST_SERVICE = "data/2.5";
     const QString WEATHER_FORECAST_SERVICE = "forecast";
@@ -46,9 +44,7 @@ private:
 private slots:
     void parseCurrentWeatherReply();
     void parseWeatherForecastReply();
-    //void parseIconReply();
-    //void iconReady(MyWeatherIcon*);
-
+    void iconReceived(MyWeatherIcon* weatherIcon);
 
 signals:
     void currentWeatherReady(MyWeatherData*);

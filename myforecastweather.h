@@ -9,6 +9,7 @@ class MyForecastWeather
 {
 public:
     MyForecastWeather();
+    ~MyForecastWeather();
 
     /***
      * day : 0 to 4... (TO SEE for the first blocs)
